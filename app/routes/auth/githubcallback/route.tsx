@@ -11,14 +11,14 @@ import { eq } from "drizzle-orm";
 interface GitHubUser {
   id: string;
   login: string;
-};
+}
 
 // Define the githubOAuthStateCookie
 const githubOAuthStateCookie = createCookie("github_oauth_state", {
   path: "/",
   httpOnly: true,
   maxAge: 60 * 10,
-  sameSite: "lax"
+  sameSite: "lax",
 });
 
 export const loader: LoaderFunction = async ({ request, context }) => {
@@ -45,39 +45,46 @@ export const loader: LoaderFunction = async ({ request, context }) => {
     const tokens = await github.validateAuthorizationCode(code);
     const githubUserResponse = await fetch("https://api.github.com/user", {
       headers: {
-        Authorization: `Bearer ${tokens.accessToken}`
-      }
+        Authorization: `Bearer ${tokens.accessToken}`,
+      },
     });
     const githubUser: GitHubUser = await githubUserResponse.json();
 
     // Check if user already exists
-    const [existingUser] = await db.select().from(Users).where(eq(Users.github_id, githubUser.id)).execute();
+    const [existingUser] = await db
+      .select()
+      .from(Users)
+      .where(eq(Users.github_id, githubUser.id))
+      .execute();
 
     if (existingUser) {
       const session = await lucia.createSession(existingUser.id, {});
       const sessionCookie = lucia.createSessionCookie(session.id);
       return redirect("/", {
         headers: {
-          "Set-Cookie": await sessionCookie.serialize()
-        }
+          "Set-Cookie": await sessionCookie.serialize(),
+        },
       });
     }
 
     const userId = generateIdFromEntropySize(10); // 16 characters long
 
     // Insert new user into the database
-    await db.insert(Users).values({
-      id: userId,
-      github_id: githubUser.id,
-      username: githubUser.login
-    }).execute();
+    await db
+      .insert(Users)
+      .values({
+        id: userId,
+        github_id: githubUser.id,
+        username: githubUser.login,
+      })
+      .execute();
 
     const session = await lucia.createSession(userId, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     return redirect("/", {
       headers: {
-        "Set-Cookie": await sessionCookie.serialize()
-      }
+        "Set-Cookie": await sessionCookie.serialize(),
+      },
     });
   } catch (e) {
     if (e instanceof OAuth2RequestError) {
@@ -92,4 +99,4 @@ export const loader: LoaderFunction = async ({ request, context }) => {
 export default function Callback() {
   console.log("Component rendered");
   return <div>Hello</div>;
-};
+}

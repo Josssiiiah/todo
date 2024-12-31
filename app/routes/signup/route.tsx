@@ -1,18 +1,10 @@
 import { Form, Link, useActionData } from "@remix-run/react";
-import {
-  ActionFunctionArgs,
-  json,
-  redirect,
-} from "@remix-run/cloudflare";
+import { ActionFunctionArgs, json, redirect } from "@remix-run/cloudflare";
 import { drizzle } from "drizzle-orm/d1";
 import { generateId } from "lucia";
 
 import { initializeLucia } from "auth";
 import { Users } from "~/drizzle/schema.server";
-
-
-
-
 
 export default function SignUpRoute() {
   const actionData = useActionData<typeof action>();
@@ -71,7 +63,6 @@ export default function SignUpRoute() {
     </div>
   );
 }
-
 
 export async function action({ context, request }: ActionFunctionArgs) {
   const db = drizzle(context.cloudflare.env.DB);

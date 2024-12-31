@@ -24,7 +24,6 @@ export async function loader({ context }: LoaderFunctionArgs) {
   return null;
 }
 
-
 export default function LoginRoute() {
   const actionData = useActionData<typeof action>();
 
@@ -70,15 +69,11 @@ export default function LoginRoute() {
             Continue
           </button>
         </Form>
-        <h1>
-          Login with GitHub
-        </h1>
+        <h1>Login with GitHub</h1>
         <Button>
           <a href="/github">Sign in with GitHub</a>
         </Button>
-        <h1>
-          Login with Google
-        </h1>
+        <h1>Login with Google</h1>
         <Button>
           <a href="/google">Sign in with Google</a>
         </Button>
@@ -95,7 +90,6 @@ export default function LoginRoute() {
     </div>
   );
 }
-
 
 export async function action({ context, request }: ActionFunctionArgs) {
   const db = drizzle(context.cloudflare.env.DB);

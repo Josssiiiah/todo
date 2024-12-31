@@ -8,7 +8,7 @@ const githubOAuthStateCookie = createCookie("github_oauth_state", {
   path: "/",
   httpOnly: true,
   maxAge: 60 * 10,
-  sameSite: "lax"
+  sameSite: "lax",
 });
 
 export const loader: LoaderFunction = async ({ request }) => {
@@ -19,7 +19,7 @@ export const loader: LoaderFunction = async ({ request }) => {
   // Set the cookie
   return redirect(String(url), {
     headers: {
-      "Set-Cookie": await githubOAuthStateCookie.serialize(state)
-    }
+      "Set-Cookie": await githubOAuthStateCookie.serialize(state),
+    },
   });
 };

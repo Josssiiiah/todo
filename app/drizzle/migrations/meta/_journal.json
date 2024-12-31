@@ -183,6 +183,34 @@
       "when": 1718592551297,
       "tag": "0025_sudden_talisman",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1735538705762,
+      "tag": "0026_unique_micromax",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1735538731858,
+      "tag": "0027_peaceful_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1735539195726,
+      "tag": "0028_wealthy_raza",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1735573435267,
+      "tag": "0029_milky_onslaught",
+      "breakpoints": true
     }
   ]
 }
