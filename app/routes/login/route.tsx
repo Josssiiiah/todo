@@ -31,7 +31,7 @@ export default function LoginRoute() {
     <div className="min-h-screen bg-gray-100 flex flex-col items-center">
       <div className="bg-white p-6 mt-48 rounded-lg shadow-lg">
         <h1 className="text-2xl font-bold mb-4">Sign in</h1>
-        <Form method="post" className="space-y-4">
+        {/* <Form method="post" className="space-y-4">
           <div>
             <label
               htmlFor="username"
@@ -68,21 +68,10 @@ export default function LoginRoute() {
           >
             Continue
           </button>
-        </Form>
-        <h1>Login with GitHub</h1>
-        <Button>
-          <a href="/github">Sign in with GitHub</a>
-        </Button>
-        <h1>Login with Google</h1>
+        </Form> */}
         <Button>
           <a href="/google">Sign in with Google</a>
         </Button>
-
-        <div className="mt-4">
-          <Link to="/signup" className="text-blue-500 hover:underline">
-            Sign up
-          </Link>
-        </div>
       </div>
       <Link to="/" className="mt-4 text-blue-500 hover:underline">
         Back to home

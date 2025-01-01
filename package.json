@@ -31,6 +31,8 @@
     "@remix-run/cloudflare-pages": "^2.8.1",
     "@remix-run/react": "^2.8.1",
     "@types/react-resizable": "^3.0.8",
+    "arctic": "^2.3.3",
+    "better-sqlite3": "^11.7.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.30.9",

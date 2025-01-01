@@ -1,11 +1,11 @@
 import { LoaderFunction, redirect } from "@remix-run/cloudflare";
-import { google } from "auth"; // Ensure you have Google OAuth setup in auth
+// import { google } from "auth"; // Ensure you have Google OAuth setup in auth
 import { createCookie } from "@remix-run/cloudflare";
-import { OAuth2RequestError } from "arctic";
+import { OAuth2RequestError, Google } from "arctic";
 import { generateIdFromEntropySize } from "lucia";
 import { initializeLucia } from "auth";
 import { parseCookies } from "oslo/cookie";
-import { Users } from "~/drizzle/schema.server";
+import { Users, session } from "~/drizzle/schema.server";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 
@@ -41,8 +41,18 @@ const googleOAuthCodeVerifierCookie = createCookie(
 );
 
 export const loader: LoaderFunction = async ({ request, context }) => {
-  const lucia = initializeLucia(context.cloudflare.env.DB);
-  const db = drizzle(context.cloudflare.env.DB);
+  const lucia = initializeLucia(context.cloudflare.env.DB as any);
+  const db = drizzle(context.cloudflare.env.DB as any);
+
+  const { env }: any = context.cloudflare;
+  console.log("Google Client ID:", env.GOOGLE_CLIENT_ID);
+  console.log("Google Client Secret:", env.GOOGLE_CLIENT_SECRET);
+  console.log("Google Redirect URI:", env.GOOGLE_REDIRECT_URI);
+  const google = new Google(
+    env.GOOGLE_CLIENT_ID,
+    env.GOOGLE_CLIENT_SECRET,
+    env.GOOGLE_REDIRECT_URI
+  );
 
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -66,11 +76,16 @@ export const loader: LoaderFunction = async ({ request, context }) => {
 
   try {
     const tokens = await google.validateAuthorizationCode(code, codeVerifier);
+    // @ts-ignore
+    const accessToken = tokens.data.access_token;
+    // @ts-ignore
+    const expiresIn = tokens.data.expires_in;
+
     const googleUserResponse = await fetch(
       "https://openidconnect.googleapis.com/v1/userinfo",
       {
         headers: {
-          Authorization: `Bearer ${tokens.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       }
     );
@@ -82,35 +97,40 @@ export const loader: LoaderFunction = async ({ request, context }) => {
       .from(Users)
       .where(eq(Users.google_id, googleUser.sub))
       .execute()
-      .then((rows) => rows[0]); // Assuming Users.google_id is the correct column name
+      .then((rows) => rows[0]);
 
+    let userId: string;
     if (existingUser) {
-      const session = await lucia.createSession(existingUser.id, {});
-      const sessionCookie = lucia.createSessionCookie(session.id);
-      return redirect("/", {
-        headers: {
-          "Set-Cookie": await sessionCookie.serialize(),
-        },
-      });
+      userId = existingUser.id;
+    } else {
+      userId = generateIdFromEntropySize(10);
+      await db
+        .insert(Users)
+        .values({
+          id: userId,
+          name: googleUser.name,
+          google_id: googleUser.sub,
+          username: googleUser.name,
+          email: googleUser.email,
+          avatar_url: googleUser.picture,
+        })
+        .execute();
     }
 
-    const userId = generateIdFromEntropySize(10); // 16 characters long
+    // Create session with Google token data
+    const luciaSession = await lucia.createSession(userId, {});
+    const sessionCookie = lucia.createSessionCookie(luciaSession.id);
 
-    // Insert new user into the database
+    // Store the access token in the session table
     await db
-      .insert(Users)
-      .values({
-        id: userId,
-        google_id: googleUser.sub,
-        username: googleUser.name,
-        email: googleUser.email,
-        avatar_url: googleUser.picture,
+      .update(session)
+      .set({
+        accessToken: accessToken,
+        tokenExpiry: Date.now() + expiresIn * 1000,
       })
-      .execute();
+      .where(eq(session.id, luciaSession.id));
 
-    const session = await lucia.createSession(userId, {});
-    const sessionCookie = lucia.createSessionCookie(session.id);
-    return redirect("/", {
+    return redirect("/app/", {
       headers: {
         "Set-Cookie": await sessionCookie.serialize(),
       },
@@ -124,7 +144,3 @@ export const loader: LoaderFunction = async ({ request, context }) => {
     return new Response(null, { status: 500 });
   }
 };
-
-export default function Callback() {
-  return <div>Hello</div>;
-}

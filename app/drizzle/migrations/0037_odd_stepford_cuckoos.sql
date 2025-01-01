@@ -1,6 +1,7 @@
 CREATE TABLE `Users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`username` text NOT NULL,
+	`name` text NOT NULL,
 	`password` text,
 	`github_id` text,
 	`google_id` text,
@@ -8,22 +9,19 @@ CREATE TABLE `Users` (
 	`avatar_url` text
 );
 --> statement-breakpoint
-CREATE TABLE `resources` (
-	`id` integer PRIMARY KEY NOT NULL,
+CREATE TABLE `todos` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`title` text NOT NULL,
-	`href` text NOT NULL
+	`description` text,
+	`start_time` text DEFAULT '09:00' NOT NULL,
+	`duration` integer DEFAULT 30 NOT NULL,
+	`time_stamp` integer DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `session` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
-	`expires_at` integer NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE `students` (
-	`id` integer PRIMARY KEY NOT NULL,
-	`name` text,
-	`category` text,
-	`description` text,
-	`image_url` text
+	`expires_at` integer NOT NULL,
+	`access_token` text,
+	`token_expiry` integer
 );

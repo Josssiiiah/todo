@@ -211,6 +211,62 @@
       "when": 1735573435267,
       "tag": "0029_milky_onslaught",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1735608388012,
+      "tag": "0030_dark_callisto",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1735609143446,
+      "tag": "0031_lush_master_mold",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1735714939999,
+      "tag": "0032_sleepy_the_fallen",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1735715597863,
+      "tag": "0033_perpetual_mauler",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1735715970263,
+      "tag": "0034_short_black_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1735715979026,
+      "tag": "0035_white_captain_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1735716091900,
+      "tag": "0036_funny_tinkerer",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1735716098380,
+      "tag": "0037_odd_stepford_cuckoos",
+      "breakpoints": true
     }
   ]
 }

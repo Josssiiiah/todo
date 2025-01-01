@@ -16,6 +16,7 @@ export const resources = sqliteTable("todos", {
 export const Users = sqliteTable("Users", {
   id: text("id").primaryKey().notNull(),
   username: text("username").notNull(),
+  name: text("name").notNull(),
   password: text("password"),
   github_id: text("github_id"),
   google_id: text("google_id"),
@@ -27,4 +28,6 @@ export const session = sqliteTable("session", {
   id: text("id").primaryKey(),
   user_id: text("user_id").notNull(),
   expires_at: integer("expires_at").notNull(),
+  accessToken: text("access_token"),
+  tokenExpiry: integer("token_expiry"),
 });

@@ -6,19 +6,38 @@ import {
   useNavigation,
 } from "@remix-run/react";
 import { drizzle } from "drizzle-orm/d1";
-import { resources } from "app/drizzle/schema.server";
+import { resources, Users, session } from "app/drizzle/schema.server";
 import { Button } from "~/components/ui/button";
 import { useToast } from "~/components/ui/use-toast";
 import { Toaster } from "~/components/ui/toaster";
 import { useEffect, useRef } from "react";
 import { Textarea } from "~/components/ui/textarea";
 import { eq } from "drizzle-orm";
+import { initializeLucia } from "auth";
 import Instructor from "@instructor-ai/instructor";
 import OpenAI from "openai";
 import { z } from "zod";
 import { Calendar } from "~/routes/app/calendar";
 import { Resizable } from "react-resizable";
 import { ResizableBox } from "react-resizable";
+
+interface GoogleCalendarEvent {
+  summary: string;
+  start: {
+    dateTime: string;
+    timeZone: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone: string;
+  };
+}
+
+interface GoogleCalendarError {
+  error?: {
+    message: string;
+  };
+}
 
 // Define the schema for todo items
 const TodoListSchema = z.object({
@@ -111,13 +130,17 @@ export default function Index() {
   }, [actionData, toast]);
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto p-6 space-y-12">
       <div>
-        <h1 className="text-2xl font-bold">Todo List</h1>
-        <p className="text-sm text-muted-foreground">
-          You have {hoursUntilMidnight} hours and{" "}
-          {minutesUntilMidnight.toString().padStart(2, "0")} minutes left until
-          midnight!
+        <h1 className="text-8xl font-bold">Todo AI</h1>
+        <p className="text-3xl text-muted-foreground">
+          You have{" "}
+          <span className="font-bold text-blue-400">{hoursUntilMidnight}</span>{" "}
+          hours and{" "}
+          <span className="font-bold text-blue-400">
+            {minutesUntilMidnight.toString().padStart(2, "0")}
+          </span>{" "}
+          minutes left until midnight!
         </p>
       </div>
 
@@ -268,6 +291,122 @@ export async function action({ request, context }: ActionFunctionArgs) {
         status: "success",
         message: "Duration updated successfully",
       };
+    }
+
+    if (action === "exportToCalendar") {
+      const tasks = JSON.parse(formData.get("tasks") as string) as Task[];
+
+      // Get the current user's session using Lucia
+      const lucia = initializeLucia(context.cloudflare.env.DB);
+      const sessionId = request.headers
+        .get("Cookie")
+        ?.match(/auth_session=([^;]+)/)?.[1];
+
+      if (!sessionId) {
+        return {
+          status: "error",
+          message: "Not authenticated",
+        };
+      }
+
+      const { session: luciaSession, user } = await lucia.validateSession(
+        sessionId
+      );
+      if (!luciaSession || !user) {
+        return {
+          status: "error",
+          message: "Not authenticated",
+        };
+      }
+
+      // Get access token from session table
+      const sessionData = await db
+        .select()
+        .from(session)
+        .where(eq(session.id, luciaSession.id))
+        .execute()
+        .then((rows) => rows[0]);
+
+      if (!sessionData?.accessToken) {
+        return {
+          status: "error",
+          message:
+            "No Google access token found. Please connect your Google Calendar.",
+        };
+      }
+
+      // Check if token is expired
+      if (
+        sessionData.tokenExpiry &&
+        new Date(sessionData.tokenExpiry) < new Date()
+      ) {
+        return {
+          status: "error",
+          message:
+            "Token expired. Please re-authenticate with Google Calendar.",
+        };
+      }
+
+      try {
+        // Create calendar events
+        const today = new Date().toISOString().split("T")[0];
+        const events = tasks.map((task: any) => ({
+          summary: task.title,
+          colorId: Math.floor(Math.random() * 11 + 1).toString(), // Random color from 1-11
+          start: {
+            dateTime: `${today}T${task.startTime}:00`,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
+          end: {
+            dateTime: new Date(
+              new Date(`${today}T${task.startTime}:00`).getTime() +
+                task.duration * 60000
+            ).toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
+        }));
+
+        // Use Google Calendar API to create events
+        const results = await Promise.all(
+          events.map((event: GoogleCalendarEvent) =>
+            fetch(
+              "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${sessionData.accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(event),
+              }
+            )
+          )
+        );
+
+        // Check for any failures
+        const failedRequests = results.filter((r) => !r.ok);
+        if (failedRequests.length > 0) {
+          const errors = await Promise.all(
+            failedRequests.map(async (r) => {
+              const error = (await r.json()) as GoogleCalendarError;
+              return error.error?.message || "Failed to create calendar event";
+            })
+          );
+          throw new Error(`Failed to create some events: ${errors.join(", ")}`);
+        }
+
+        return {
+          status: "success",
+          message: "Events exported to Google Calendar",
+        };
+      } catch (error) {
+        console.error("Error exporting to calendar:", error);
+        return {
+          status: "error",
+          message:
+            error instanceof Error ? error.message : "Failed to export events",
+        };
+      }
     }
   } catch (error) {
     console.error("Error:", error);
