@@ -38,8 +38,6 @@ export const loader: LoaderFunction = async ({ request, context }) => {
     'https://www.googleapis.com/auth/calendar.events',
   ]);
 
-  console.log('Google OAuth URL:', url);
-
   // Set the state and code_verifier in cookies
   const stateCookie = await googleOAuthStateCookie.serialize(state);
   const codeVerifierCookie = await googleOAuthCodeVerifierCookie.serialize(codeVerifier);
