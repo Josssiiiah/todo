@@ -5,6 +5,7 @@ node_modules
 .env
 
 .wrangler
-.worker-configuration.d.ts
+worker-configuration.d.ts
+wrangler.toml
 
 .prettierrc

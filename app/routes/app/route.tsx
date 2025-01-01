@@ -129,39 +129,48 @@ export default function Index() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-12">
-      <div>
-        <h1 className="text-8xl font-bold">Todo AI</h1>
-        <p className="text-3xl text-muted-foreground">
-          You have <span className="font-bold text-blue-400">{hoursUntilMidnight}</span> hours and{' '}
+      {/* Header Section */}
+      <header className="space-y-4">
+        <h1 className="text-8xl font-bold tracking-tight">Todo AI</h1>
+        <p className="text-2xl text-muted-foreground">
+          You have{' '}
+          <span className="font-bold text-blue-400">
+            {hoursUntilMidnight}
+          </span>{' '}
+          hours and{' '}
           <span className="font-bold text-blue-400">
             {minutesUntilMidnight.toString().padStart(2, '0')}
           </span>{' '}
           minutes left until midnight!
         </p>
-      </div>
+      </header>
 
       {/* Calendar View */}
-      <Calendar tasks={todos} />
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold">Calendar View</h2>
+        <Calendar tasks={todos} />
+      </section>
 
-      {/* Todo List */}
-
-      <div className="space-y-2">
-        <h2 className="text-lg font-semibold">List View</h2>
-        <div className="flex flex-col border rounded-lg ">
-          {todos.map(task => (
+      {/* List View */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold">List View</h2>
+        <div className="flex flex-col gap-3">
+          {todos.map((task) => (
             <div
               key={task.id}
-              className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+              className="flex items-center justify-between p-4 bg-secondary rounded-lg shadow-sm hover:shadow transition-shadow"
             >
               <div className="flex flex-col">
-                <span>{task.title}</span>
+                <span className="font-medium">{task.title}</span>
                 <span className="text-sm text-muted-foreground">
                   {militaryToNormalTime(task.startTime)} -{' '}
                   {militaryToNormalTime(getEndTime(task.startTime, task.duration))}
                 </span>
-                <span className="text-xs text-muted-foreground">{task.duration} min</span>
+                <span className="text-xs text-muted-foreground">
+                  {task.duration} min
+                </span>
               </div>
-              <Form method="post" className="inline">
+              <Form method="post">
                 <input type="hidden" name="action" value="delete" />
                 <input type="hidden" name="todoId" value={task.id} />
                 <Button variant="destructive" size="sm" type="submit">
@@ -171,24 +180,27 @@ export default function Index() {
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* Add Todo Form */}
-      <Form ref={formRef} method="post" className="space-y-4">
-        <input type="hidden" name="action" value="add" />
-        <div className="flex flex-col gap-2">
-          <Textarea
-            name="title"
-            placeholder="Enter tasks in natural language (include when you want to do it and how long it will take)"
-            required
-            disabled={isAdding}
-            className="min-h-[100px]"
-          />
-          <Button type="submit" disabled={isAdding} className="self-end">
-            {isAdding ? 'Adding...' : 'Add'}
-          </Button>
-        </div>
-      </Form>
+      <section className="space-y-4">
+        <Form ref={formRef} method="post" className="space-y-4">
+          <input type="hidden" name="action" value="add" />
+          <div className="flex flex-col gap-2">
+            <Textarea
+              name="title"
+              placeholder="Enter tasks in natural language..."
+              required
+              disabled={isAdding}
+              className="min-h-[100px]"
+            />
+            <Button type="submit" disabled={isAdding} className="self-end">
+              {isAdding ? 'Adding...' : 'Add'}
+            </Button>
+          </div>
+        </Form>
+      </section>
+      
       <Toaster />
     </div>
   );
@@ -304,6 +316,91 @@ export async function action({ request, context }: ActionFunctionArgs) {
         status: 'success',
         message: 'Start time updated successfully',
       };
+    }
+
+    if (action === 'clearCalendar') {
+      const date = formData.get('date') as string;
+
+      // Get the current user's session using Lucia
+      const lucia = initializeLucia(context.cloudflare.env.DB);
+      const sessionId = request.headers.get('Cookie')?.match(/auth_session=([^;]+)/)?.[1];
+
+      if (!sessionId) {
+        return {
+          status: 'error',
+          message: 'Not authenticated',
+        };
+      }
+
+      const { session: luciaSession, user } = await lucia.validateSession(sessionId);
+      if (!luciaSession || !user) {
+        return {
+          status: 'error',
+          message: 'Not authenticated',
+        };
+      }
+
+      // Get access token from session table
+      const sessionData = await db
+        .select()
+        .from(session)
+        .where(eq(session.id, luciaSession.id))
+        .execute()
+        .then(rows => rows[0]);
+
+      if (!sessionData?.accessToken) {
+        return {
+          status: 'error',
+          message: 'No Google access token found. Please connect your Google Calendar.',
+        };
+      }
+
+      try {
+        // Clear todos from the database for the specified day
+        await db.delete(resources);
+
+        // Fetch events for the specified day
+        const eventsResponse = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${date}T00:00:00Z&timeMax=${date}T23:59:59Z`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${sessionData.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (!eventsResponse.ok) {
+          const errorData: { error?: { message: string } } = await eventsResponse.json();
+          throw new Error(errorData.error?.message || 'Failed to fetch events');
+        }
+
+        const eventsData: { items: { id: string }[] } = await eventsResponse.json();
+
+        // Delete each event
+        const deletePromises = eventsData.items.map((event: any) =>
+          fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${event.id}`, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${sessionData.accessToken}`,
+            },
+          })
+        );
+
+        await Promise.all(deletePromises);
+
+        return {
+          status: 'success',
+          message: 'Google Calendar cleared for the day',
+        };
+      } catch (error) {
+        console.error('Error clearing calendar:', error);
+        return {
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Failed to clear calendar',
+        };
+      }
     }
 
     if (action === 'exportToCalendar') {

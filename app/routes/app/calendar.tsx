@@ -138,6 +138,16 @@ export function Calendar({ tasks }: CalendarProps) {
     );
   };
 
+  const handleClearCalendar = () => {
+    exportFetcher.submit(
+      {
+        action: 'clearCalendar',
+        date: new Date().toISOString().split('T')[0], // Send today's date
+      },
+      { method: 'post' }
+    );
+  };
+
   // Handle export response
   useEffect(() => {
     if (exportFetcher.data) {
@@ -160,14 +170,23 @@ export function Calendar({ tasks }: CalendarProps) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">Today's Schedule</h2>
-        <Button
-          onClick={handleExport}
-          disabled={exportFetcher.state === 'submitting' || tasks.length === 0}
-        >
-          {exportFetcher.state === 'submitting' ? 'Exporting...' : 'Export to Google Calendar'}
-        </Button>
+        <div className="flex space-x-2">
+          <Button
+            onClick={handleExport}
+            disabled={exportFetcher.state === 'submitting' || tasks.length === 0}
+          >
+            {exportFetcher.state === 'submitting' ? 'Exporting...' : 'Export to Google Calendar'}
+          </Button>
+          <Button
+            onClick={handleClearCalendar}
+            disabled={exportFetcher.state === 'submitting'}
+            variant="destructive"
+          >
+            Clear Google Calendar
+          </Button>
+        </div>
       </div>
-      <ScrollArea className="h-[600px] w-full rounded-md border">
+      <ScrollArea className="h-[750px] w-full rounded-md border">
         <div className="flex">
           {/* Time columns */}
           <div className="flex flex-shrink-0">
