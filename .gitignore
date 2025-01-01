@@ -8,7 +8,7 @@ node_modules
 *.local
 
 .wrangler
-worker-configuration.d.ts
-wrangler.toml
+# worker-configuration.d.ts
+# wrangler.toml
 
 .prettierrc
