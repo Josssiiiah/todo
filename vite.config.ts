@@ -13,8 +13,6 @@ export default defineConfig({
         return defineRoutes((route) => {
           route("/google", "routes/auth/google/route.tsx");
           route("/googleredirect", "routes/auth/googleredirect/route.tsx");
-          route("/github", "routes/auth/github/route.tsx");
-          route("/githubcallback", "routes/auth/githubcallback/route.tsx");
         });
       },
     }
