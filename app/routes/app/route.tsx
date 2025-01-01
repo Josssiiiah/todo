@@ -189,7 +189,7 @@ export default function Index() {
           <div className="flex flex-col gap-2">
             <Textarea
               name="title"
-              placeholder="Enter tasks in natural language..."
+              placeholder="Please enter tasks in natural language..."
               required
               disabled={isAdding}
               className="min-h-[100px]"
