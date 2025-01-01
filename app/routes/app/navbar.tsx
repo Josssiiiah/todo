@@ -1,12 +1,12 @@
-import { Link } from "@remix-run/react";
+import { Link } from '@remix-run/react';
 
 export function Navbar({ user }: any) {
-  console.log("user", user);
+  console.log('user', user);
   return (
     <div className="flex flex-row justify-between pt-8 w-full">
       <Link to="/">
         <h2 className="font-bold text-lg">Peer Profiles</h2>
-      </Link>{" "}
+      </Link>{' '}
       <div>
         {user ? (
           <Link

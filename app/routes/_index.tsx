@@ -1,4 +1,4 @@
-import { Link } from "@remix-run/react";
+import { Link } from '@remix-run/react';
 
 export default function Index() {
   return (
@@ -35,9 +35,7 @@ export default function Index() {
           App
         </Link>
       </div>
-      <h1 className="text-4xl font-bold mb-4 pt-10">
-        Welcome to Josiah's Stack
-      </h1>
+      <h1 className="text-4xl font-bold mb-4 pt-10">Welcome to Josiah's Stack</h1>
 
       <div className="bg-white p-6 rounded-lg shadow mt-6">
         <ul className="space-y-3 text-lg text-gray-700">

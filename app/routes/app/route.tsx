@@ -1,25 +1,20 @@
-import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/cloudflare";
-import {
-  useLoaderData,
-  Form,
-  useActionData,
-  useNavigation,
-} from "@remix-run/react";
-import { drizzle } from "drizzle-orm/d1";
-import { resources, Users, session } from "app/drizzle/schema.server";
-import { Button } from "~/components/ui/button";
-import { useToast } from "~/components/ui/use-toast";
-import { Toaster } from "~/components/ui/toaster";
-import { useEffect, useRef } from "react";
-import { Textarea } from "~/components/ui/textarea";
-import { eq } from "drizzle-orm";
-import { initializeLucia } from "auth";
-import Instructor from "@instructor-ai/instructor";
-import OpenAI from "openai";
-import { z } from "zod";
-import { Calendar } from "~/routes/app/calendar";
-import { Resizable } from "react-resizable";
-import { ResizableBox } from "react-resizable";
+import { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { useLoaderData, Form, useActionData, useNavigation } from '@remix-run/react';
+import { drizzle } from 'drizzle-orm/d1';
+import { resources, Users, session } from 'app/drizzle/schema.server';
+import { Button } from '~/components/ui/button';
+import { useToast } from '~/components/ui/use-toast';
+import { Toaster } from '~/components/ui/toaster';
+import { useEffect, useRef } from 'react';
+import { Textarea } from '~/components/ui/textarea';
+import { eq } from 'drizzle-orm';
+import { initializeLucia } from 'auth';
+import Instructor from '@instructor-ai/instructor';
+import OpenAI from 'openai';
+import { z } from 'zod';
+import { Calendar } from '~/routes/app/calendar';
+import { Resizable } from 'react-resizable';
+import { ResizableBox } from 'react-resizable';
 
 interface GoogleCalendarEvent {
   summary: string;
@@ -50,10 +45,10 @@ const TodoListSchema = z.object({
   ),
 });
 
-////////////////////////////////////////////////////////////
-// Loader
-////////////////////////////////////////////////////////////
-export async function loader({ request, context }: LoaderFunctionArgs) {
+/* ----------------------------------------------------------------------------
+Loader
+---------------------------------------------------------------------------- */
+export async function loader({ context }: LoaderFunctionArgs) {
   const db = drizzle(context.cloudflare.env.DB);
   const todos = await db.select().from(resources).orderBy(resources.timeStamp);
 
@@ -69,22 +64,37 @@ interface Task {
   duration: number;
 }
 
-interface JsonResource {
-  id: number;
-  title: string;
-  description: string | null;
-  startTime: string;
-  duration: number;
-  timeStamp: string;
+// Helper function to calculate time until midnight
+function getTimeUntilMidnight() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const msUntilMidnight = midnight.getTime() - now.getTime();
+  return {
+    hours: Math.floor(msUntilMidnight / (1000 * 60 * 60)),
+    minutes: Math.floor((msUntilMidnight % (1000 * 60 * 60)) / (1000 * 60)),
+  };
 }
 
-function mapResourceToTask(resource: JsonResource): Task {
-  return {
-    id: resource.id,
-    title: resource.title,
-    startTime: resource.startTime ?? "09:00",
-    duration: resource.duration ?? 30,
-  };
+// Helper function to convert military time to 12-hour format
+function militaryToNormalTime(time: string) {
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const formattedHour = hour % 12 || 12;
+  return `${formattedHour}:${minutes} ${ampm}`;
+}
+
+// Helper function to calculate end time
+function getEndTime(startTime: string, durationMinutes: number) {
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const startDate = new Date();
+  startDate.setHours(hours, minutes, 0, 0);
+  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+  return `${endDate.getHours().toString().padStart(2, '0')}:${endDate
+    .getMinutes()
+    .toString()
+    .padStart(2, '0')}`;
 }
 
 export default function Index() {
@@ -93,38 +103,26 @@ export default function Index() {
   const { toast } = useToast();
   const navigation = useNavigation();
   const formRef = useRef<HTMLFormElement>(null);
-
-  const mappedTasks = todos.map(mapResourceToTask);
-
+  const { hours: hoursUntilMidnight, minutes: minutesUntilMidnight } = getTimeUntilMidnight();
   const isAdding =
-    navigation.state === "submitting" &&
-    navigation.formData?.get("action") === "add";
+    navigation.state === 'submitting' && navigation.formData?.get('action') === 'add';
 
-  // Calculate time remaining in the day
-  const now = new Date();
-  const midnight = new Date(now);
-  midnight.setHours(24, 0, 0, 0);
-  const msUntilMidnight = midnight.getTime() - now.getTime();
-  const hoursUntilMidnight = Math.floor(msUntilMidnight / (1000 * 60 * 60));
-  const minutesUntilMidnight = Math.floor(
-    (msUntilMidnight % (1000 * 60 * 60)) / (1000 * 60)
-  );
-
+  // Toast
   useEffect(() => {
-    if (actionData?.status === "success") {
+    if (actionData?.status === 'success') {
       if (formRef.current) {
         formRef.current.reset();
       }
       toast({
-        title: "Success",
+        title: 'Success',
         description: actionData.message,
-        variant: "default",
+        variant: 'default',
       });
-    } else if (actionData?.status === "error") {
+    } else if (actionData?.status === 'error') {
       toast({
-        title: "Error",
+        title: 'Error',
         description: actionData.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   }, [actionData, toast]);
@@ -134,41 +132,45 @@ export default function Index() {
       <div>
         <h1 className="text-8xl font-bold">Todo AI</h1>
         <p className="text-3xl text-muted-foreground">
-          You have{" "}
-          <span className="font-bold text-blue-400">{hoursUntilMidnight}</span>{" "}
-          hours and{" "}
+          You have <span className="font-bold text-blue-400">{hoursUntilMidnight}</span> hours and{' '}
           <span className="font-bold text-blue-400">
-            {minutesUntilMidnight.toString().padStart(2, "0")}
-          </span>{" "}
+            {minutesUntilMidnight.toString().padStart(2, '0')}
+          </span>{' '}
           minutes left until midnight!
         </p>
       </div>
 
       {/* Calendar View */}
-      <Calendar tasks={mappedTasks} />
+      <Calendar tasks={todos} />
 
       {/* Todo List */}
+
       <div className="space-y-2">
-        {mappedTasks.map((task) => (
-          <div
-            key={task.id}
-            className="flex items-center justify-between p-3 bg-secondary rounded-lg"
-          >
-            <div className="flex flex-col">
-              <span>{task.title}</span>
-              <span className="text-sm text-muted-foreground">
-                {task.startTime} ({task.duration} min)
-              </span>
+        <h2 className="text-lg font-semibold">List View</h2>
+        <div className="flex flex-col border rounded-lg ">
+          {todos.map(task => (
+            <div
+              key={task.id}
+              className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+            >
+              <div className="flex flex-col">
+                <span>{task.title}</span>
+                <span className="text-sm text-muted-foreground">
+                  {militaryToNormalTime(task.startTime)} -{' '}
+                  {militaryToNormalTime(getEndTime(task.startTime, task.duration))}
+                </span>
+                <span className="text-xs text-muted-foreground">{task.duration} min</span>
+              </div>
+              <Form method="post" className="inline">
+                <input type="hidden" name="action" value="delete" />
+                <input type="hidden" name="todoId" value={task.id} />
+                <Button variant="destructive" size="sm" type="submit">
+                  Delete
+                </Button>
+              </Form>
             </div>
-            <Form method="post" className="inline">
-              <input type="hidden" name="action" value="delete" />
-              <input type="hidden" name="todoId" value={task.id} />
-              <Button variant="destructive" size="sm" type="submit">
-                Delete
-              </Button>
-            </Form>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Add Todo Form */}
@@ -183,7 +185,7 @@ export default function Index() {
             className="min-h-[100px]"
           />
           <Button type="submit" disabled={isAdding} className="self-end">
-            {isAdding ? "Adding..." : "Add"}
+            {isAdding ? 'Adding...' : 'Add'}
           </Button>
         </div>
       </Form>
@@ -195,7 +197,7 @@ export default function Index() {
 export async function action({ request, context }: ActionFunctionArgs) {
   const db = drizzle(context.cloudflare.env.DB);
   const formData = await request.formData();
-  const action = formData.get("action");
+  const action = formData.get('action');
 
   const { env }: any = context.cloudflare;
 
@@ -206,31 +208,30 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   const client = Instructor({
     client: oai,
-    mode: "FUNCTIONS",
+    mode: 'FUNCTIONS',
   });
 
   try {
-    if (action === "add") {
-      const inputText = formData.get("title") as string;
-      if (!inputText) throw new Error("Input is required");
+    if (action === 'add') {
+      const inputText = formData.get('title') as string;
+      if (!inputText) throw new Error('Input is required');
 
       // Get the next hour from current time
-      const now = new Date();
-      const currentHour = now.getHours();
-      const currentMinutes = now.getMinutes();
+      const currentHour = new Date().getHours();
+      const currentMinutes = new Date().getMinutes();
       const startHour = currentMinutes > 0 ? currentHour + 0.25 : currentHour;
 
       // Calculate number of slots needed (from start hour to midnight)
       const hoursUntilMidnight = 24 - startHour;
 
       // Format startHour for GPT
-      const formattedStartHour = startHour.toString().padStart(2, "0") + ":00";
+      const formattedStartHour = startHour.toString().padStart(2, '0') + ':00';
 
       // Use Instructor to extract todo items
       const response = await client.chat.completions.create({
         messages: [
           {
-            role: "system",
+            role: 'system',
             content: `You are a task scheduling system. Break down the user's input into specific, actionable tasks. For each task, specify a start time (in HH:mm format) and duration (in minutes). Important scheduling rules:
               1. Only assign times starting from ${formattedStartHour} and within the next ${hoursUntilMidnight} hours
               2. All times must end in :00, :15, :30, or :45 (15-minute intervals)
@@ -238,19 +239,19 @@ export async function action({ request, context }: ActionFunctionArgs) {
               4. If no specific time is mentioned, distribute tasks reasonably within the allowed time window`,
           },
           {
-            role: "user",
+            role: 'user',
             content: inputText,
           },
         ],
-        model: "gpt-4o-mini",
-        response_model: { schema: TodoListSchema, name: "ExtractTasks" },
+        model: 'gpt-4o-mini',
+        response_model: { schema: TodoListSchema, name: 'ExtractTasks' },
       });
 
       // Insert each task into the database
       for (const task of response.tasks) {
         await db.insert(resources).values({
           title: task.title,
-          description: "",
+          description: '',
           startTime: task.startTime,
           duration: task.duration,
           timeStamp: new Date(),
@@ -258,64 +259,72 @@ export async function action({ request, context }: ActionFunctionArgs) {
       }
 
       return {
-        status: "success",
-        message: "Tasks added successfully",
+        status: 'success',
+        message: 'Tasks added successfully',
       };
     }
 
-    if (action === "delete") {
-      const todoId = Number(formData.get("todoId"));
-      if (!todoId) throw new Error("Todo ID is required");
+    if (action === 'delete') {
+      const todoId = Number(formData.get('todoId'));
+      if (!todoId) throw new Error('Todo ID is required');
 
       await db.delete(resources).where(eq(resources.id, todoId));
 
       return {
-        status: "success",
-        message: "Todo deleted successfully",
+        status: 'success',
+        message: 'Todo deleted successfully',
       };
     }
 
-    if (action === "updateDuration") {
-      const taskId = Number(formData.get("taskId"));
-      const duration = Number(formData.get("duration"));
+    if (action === 'updateDuration') {
+      const taskId = Number(formData.get('taskId'));
+      const duration = Number(formData.get('duration'));
 
-      if (!taskId) throw new Error("Task ID is required");
-      if (!duration) throw new Error("Duration is required");
+      if (!taskId) throw new Error('Task ID is required');
+      if (!duration) throw new Error('Duration is required');
 
-      await db
-        .update(resources)
-        .set({ duration })
-        .where(eq(resources.id, taskId));
+      await db.update(resources).set({ duration }).where(eq(resources.id, taskId));
 
       return {
-        status: "success",
-        message: "Duration updated successfully",
+        status: 'success',
+        message: 'Duration updated successfully',
       };
     }
 
-    if (action === "exportToCalendar") {
-      const tasks = JSON.parse(formData.get("tasks") as string) as Task[];
+    if (action === 'updateStartTime') {
+      const taskId = Number(formData.get('taskId'));
+      const startTime = formData.get('startTime') as string;
+
+      if (!taskId) throw new Error('Task ID is required');
+      if (!startTime) throw new Error('Start time is required');
+
+      await db.update(resources).set({ startTime }).where(eq(resources.id, taskId));
+
+      return {
+        status: 'success',
+        message: 'Start time updated successfully',
+      };
+    }
+
+    if (action === 'exportToCalendar') {
+      const tasks = JSON.parse(formData.get('tasks') as string) as Task[];
 
       // Get the current user's session using Lucia
       const lucia = initializeLucia(context.cloudflare.env.DB);
-      const sessionId = request.headers
-        .get("Cookie")
-        ?.match(/auth_session=([^;]+)/)?.[1];
+      const sessionId = request.headers.get('Cookie')?.match(/auth_session=([^;]+)/)?.[1];
 
       if (!sessionId) {
         return {
-          status: "error",
-          message: "Not authenticated",
+          status: 'error',
+          message: 'Not authenticated',
         };
       }
 
-      const { session: luciaSession, user } = await lucia.validateSession(
-        sessionId
-      );
+      const { session: luciaSession, user } = await lucia.validateSession(sessionId);
       if (!luciaSession || !user) {
         return {
-          status: "error",
-          message: "Not authenticated",
+          status: 'error',
+          message: 'Not authenticated',
         };
       }
 
@@ -325,31 +334,26 @@ export async function action({ request, context }: ActionFunctionArgs) {
         .from(session)
         .where(eq(session.id, luciaSession.id))
         .execute()
-        .then((rows) => rows[0]);
+        .then(rows => rows[0]);
 
       if (!sessionData?.accessToken) {
         return {
-          status: "error",
-          message:
-            "No Google access token found. Please connect your Google Calendar.",
+          status: 'error',
+          message: 'No Google access token found. Please connect your Google Calendar.',
         };
       }
 
       // Check if token is expired
-      if (
-        sessionData.tokenExpiry &&
-        new Date(sessionData.tokenExpiry) < new Date()
-      ) {
+      if (sessionData.tokenExpiry && new Date(sessionData.tokenExpiry) < new Date()) {
         return {
-          status: "error",
-          message:
-            "Token expired. Please re-authenticate with Google Calendar.",
+          status: 'error',
+          message: 'Token expired. Please re-authenticate with Google Calendar.',
         };
       }
 
       try {
         // Create calendar events
-        const today = new Date().toISOString().split("T")[0];
+        const today = new Date().toISOString().split('T')[0];
         const events = tasks.map((task: any) => ({
           summary: task.title,
           colorId: Math.floor(Math.random() * 11 + 1).toString(), // Random color from 1-11
@@ -359,8 +363,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
           },
           end: {
             dateTime: new Date(
-              new Date(`${today}T${task.startTime}:00`).getTime() +
-                task.duration * 60000
+              new Date(`${today}T${task.startTime}:00`).getTime() + task.duration * 60000
             ).toISOString(),
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           },
@@ -369,50 +372,46 @@ export async function action({ request, context }: ActionFunctionArgs) {
         // Use Google Calendar API to create events
         const results = await Promise.all(
           events.map((event: GoogleCalendarEvent) =>
-            fetch(
-              "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${sessionData.accessToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(event),
-              }
-            )
+            fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${sessionData.accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(event),
+            })
           )
         );
 
         // Check for any failures
-        const failedRequests = results.filter((r) => !r.ok);
+        const failedRequests = results.filter(r => !r.ok);
         if (failedRequests.length > 0) {
           const errors = await Promise.all(
-            failedRequests.map(async (r) => {
+            failedRequests.map(async r => {
               const error = (await r.json()) as GoogleCalendarError;
-              return error.error?.message || "Failed to create calendar event";
+              return error.error?.message || 'Failed to create calendar event';
             })
           );
-          throw new Error(`Failed to create some events: ${errors.join(", ")}`);
+          throw new Error(`Failed to create some events: ${errors.join(', ')}`);
         }
 
         return {
-          status: "success",
-          message: "Events exported to Google Calendar",
+          status: 'success',
+          message: 'Events exported to Google Calendar',
         };
       } catch (error) {
-        console.error("Error exporting to calendar:", error);
+        console.error('Error exporting to calendar:', error);
         return {
-          status: "error",
-          message:
-            error instanceof Error ? error.message : "Failed to export events",
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Failed to export events',
         };
       }
     }
   } catch (error) {
-    console.error("Error:", error);
+    console.error('Error:', error);
     return {
-      status: "error",
-      message: error instanceof Error ? error.message : "An error occurred",
+      status: 'error',
+      message: error instanceof Error ? error.message : 'An error occurred',
     };
   }
 }

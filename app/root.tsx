@@ -1,18 +1,10 @@
-import {
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from "@remix-run/react";
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
 
-import type { LinksFunction } from "@remix-run/cloudflare";
-import stylesheet from "~/tailwind.css?url";
-import { Toaster } from "~/components/ui/toaster";
+import type { LinksFunction } from '@remix-run/cloudflare';
+import stylesheet from '~/tailwind.css?url';
+import { Toaster } from '~/components/ui/toaster';
 
-export const links: LinksFunction = () => [
-  { rel: "stylesheet", href: stylesheet },
-];
+export const links: LinksFunction = () => [{ rel: 'stylesheet', href: stylesheet }];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (

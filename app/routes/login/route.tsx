@@ -4,21 +4,21 @@ import {
   LoaderFunctionArgs,
   MetaFunction,
   redirect,
-} from "@remix-run/cloudflare";
-import { Form, Link, useActionData } from "@remix-run/react";
-import { drizzle } from "drizzle-orm/d1";
-import { initializeLucia } from "auth";
-import { Users } from "~/drizzle/schema.server";
-import { sql } from "drizzle-orm";
-import { Button } from "~/components/ui/button";
+} from '@remix-run/cloudflare';
+import { Form, Link, useActionData } from '@remix-run/react';
+import { drizzle } from 'drizzle-orm/d1';
+import { initializeLucia } from 'auth';
+import { Users } from '~/drizzle/schema.server';
+import { sql } from 'drizzle-orm';
+import { Button } from '~/components/ui/button';
 
 export const meta: MetaFunction = () => {
-  return [{ title: "Login" }];
+  return [{ title: 'Login' }];
 };
 
 export async function loader({ context }: LoaderFunctionArgs) {
   if (context.session) {
-    throw redirect("/");
+    throw redirect('/');
   }
 
   return null;
@@ -86,28 +86,24 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
   const formData = await request.formData();
 
-  const username = formData.get("username");
+  const username = formData.get('username');
 
   if (
-    typeof username !== "string" ||
+    typeof username !== 'string' ||
     username.length < 3 ||
     username.length > 31 ||
     !/^[a-z0-9_-]+$/.test(username)
   ) {
     return json({
-      error: "Invalid username",
+      error: 'Invalid username',
     });
   }
 
-  const password = formData.get("password");
+  const password = formData.get('password');
 
-  if (
-    typeof password !== "string" ||
-    password.length < 6 ||
-    password.length > 255
-  ) {
+  if (typeof password !== 'string' || password.length < 6 || password.length > 255) {
     return json({
-      error: "Invalid password",
+      error: 'Invalid password',
     });
   }
 
@@ -119,22 +115,22 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
   if (!existingUser) {
     return json({
-      error: "Incorrect username or password",
+      error: 'Incorrect username or password',
     });
   }
 
   if (!password) {
     return json({
-      error: "Incorrect username or password",
+      error: 'Incorrect username or password',
     });
   }
 
   const session = await lucia.createSession(existingUser[0].id, {});
   const sessionCookie = lucia.createSessionCookie(session.id);
 
-  return redirect("/", {
+  return redirect('/', {
     headers: {
-      "Set-Cookie": sessionCookie.serialize(),
+      'Set-Cookie': sessionCookie.serialize(),
     },
   });
 }
