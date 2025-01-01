@@ -1,6 +1,5 @@
 import { LoaderFunction, redirect } from '@remix-run/cloudflare';
 import { createCookie } from '@remix-run/cloudflare';
-// import { google } from "auth"; // Ensure you have Google OAuth setup in auth
 import { generateCodeVerifier, generateState, Google } from 'arctic';
 
 // Define the cookies
