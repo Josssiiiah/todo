@@ -60,13 +60,8 @@ export function Tasks({ timeSlots, tasks }: TasksProps) {
 
   const [taskHeights, setTaskHeights] = useState<Record<number, number>>({});
 
-  const handleResize = (
-    taskId: number,
-    _e: MouseEvent | TouchEvent,
-    { size }: { size: { height: number } }
-  ) => {
-    // Snap to 15-minute intervals (20px per 15 minutes)
-    const snappedHeight = Math.round(size.height / 20) * 20;
+  const handleResize = (taskId: number, height: number) => {
+    const snappedHeight = Math.round(height / 20) * 20;
     setTaskHeights(prev => ({
       ...prev,
       [taskId]: snappedHeight,
@@ -132,9 +127,7 @@ export function Tasks({ timeSlots, tasks }: TasksProps) {
                         // TODO: Update task position in state/DB
                       }}
                       onResize={(e, direction, ref, delta, position) => {
-                        handleResize(task.id, e, {
-                          size: { height: parseInt(ref.style.height) },
-                        });
+                        handleResize(task.id, parseInt(ref.style.height));
                       }}
                       onResizeStop={(e, direction, ref, delta, position) => {
                         // Add comment before console.log
@@ -160,7 +153,7 @@ export function Tasks({ timeSlots, tasks }: TasksProps) {
                         <div className="text-xs opacity-70">{duration} minutes</div>
                       </div>
                     </Rnd>
-                    {/* <ResizableBox
+                    <ResizableBox
                       width={400}
                       height={height}
                       axis="y"
@@ -185,7 +178,7 @@ export function Tasks({ timeSlots, tasks }: TasksProps) {
                         </div>
                         <div className="text-xs opacity-70">{duration} minutes</div>
                       </div>
-                    </ResizableBox> */}
+                    </ResizableBox>
                   </div>
                 );
               })}
