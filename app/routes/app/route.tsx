@@ -12,11 +12,10 @@ import { initializeLucia } from 'auth';
 import Instructor from '@instructor-ai/instructor';
 import OpenAI from 'openai';
 import { z } from 'zod';
-import { Calendar } from '~/routes/app/calendar';
-import { Resizable } from 'react-resizable';
-import { ResizableBox } from 'react-resizable';
+import { CalendarView } from '~/routes/app/CalendarView';
+import { ListView } from './ListView';
 
-interface GoogleCalendarEvent {
+interface GoogleCalendarViewEvent {
   summary: string;
   start: {
     dateTime: string;
@@ -28,7 +27,7 @@ interface GoogleCalendarEvent {
   };
 }
 
-interface GoogleCalendarError {
+interface GoogleCalendarViewError {
   error?: {
     message: string;
   };
@@ -97,7 +96,10 @@ function getEndTime(startTime: string, durationMinutes: number) {
     .padStart(2, '0')}`;
 }
 
-export default function Index() {
+/* ----------------------------------------------------------------------------
+Component
+---------------------------------------------------------------------------- */
+export default function App() {
   const { todos } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const { toast } = useToast();
@@ -141,40 +143,14 @@ export default function Index() {
         </p>
       </header>
 
-      {/* Calendar View */}
+      {/* CalendarView View */}
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Calendar View</h2>
-        <Calendar tasks={todos} />
+        <h2 className="text-xl font-semibold">CalendarView View</h2>
+        <CalendarView tasks={todos} />
       </section>
 
       {/* List View */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">List View</h2>
-        <div className="flex flex-col gap-3">
-          {todos.map(task => (
-            <div
-              key={task.id}
-              className="flex items-center justify-between p-4 bg-secondary rounded-lg shadow-sm hover:shadow transition-shadow"
-            >
-              <div className="flex flex-col">
-                <span className="font-medium">{task.title}</span>
-                <span className="text-sm text-muted-foreground">
-                  {militaryToNormalTime(task.startTime)} -{' '}
-                  {militaryToNormalTime(getEndTime(task.startTime, task.duration))}
-                </span>
-                <span className="text-xs text-muted-foreground">{task.duration} min</span>
-              </div>
-              <Form method="post">
-                <input type="hidden" name="action" value="delete" />
-                <input type="hidden" name="todoId" value={task.id} />
-                <Button variant="destructive" size="sm" type="submit">
-                  Delete
-                </Button>
-              </Form>
-            </div>
-          ))}
-        </div>
-      </section>
+      <ListView tasks={todos} />
 
       {/* Add Todo Form */}
       <section className="space-y-4">
@@ -200,26 +176,16 @@ export default function Index() {
   );
 }
 
-export interface Env {
-  DB: D1Database;
-  OPENAI_API_KEY: string;
-  OPENAI_ORGANIZATION: string;
-}
-
-export async function openAILoader(env: Env) {
-  return {
-    OPENAI_API_KEY: env.OPENAI_API_KEY,
-    OPENAI_ORGANIZATION: env.OPENAI_ORGANIZATION,
-  };
-}
-
+/* ----------------------------------------------------------------------------
+Action
+---------------------------------------------------------------------------- */
 export async function action({ request, context }: ActionFunctionArgs) {
   const db = drizzle(context.cloudflare.env.DB);
   const formData = await request.formData();
   const action = formData.get('action');
 
-  const { env }: any = context.cloudflare;
-  const { OPENAI_API_KEY, OPENAI_ORGANIZATION } = await openAILoader(env);
+  const { env } = context.cloudflare;
+  const { OPENAI_API_KEY, OPENAI_ORGANIZATION } = env;
 
   const oai = new OpenAI({
     apiKey: OPENAI_API_KEY ?? undefined,
@@ -326,7 +292,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       };
     }
 
-    if (action === 'clearCalendar') {
+    if (action === 'clearCalendarView') {
       const date = formData.get('date') as string;
 
       // Get the current user's session using Lucia
@@ -359,7 +325,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (!sessionData?.accessToken) {
         return {
           status: 'error',
-          message: 'No Google access token found. Please connect your Google Calendar.',
+          message: 'No Google access token found. Please connect your Google CalendarView.',
         };
       }
 
@@ -369,7 +335,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
         // Fetch events for the specified day
         const eventsResponse = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${date}T00:00:00Z&timeMax=${date}T23:59:59Z`,
+          `https://www.googleapis.com/calendarView/v3/calendarViews/primary/events?timeMin=${date}T00:00:00Z&timeMax=${date}T23:59:59Z`,
           {
             method: 'GET',
             headers: {
@@ -388,30 +354,33 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
         // Delete each event
         const deletePromises = eventsData.items.map((event: any) =>
-          fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${event.id}`, {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Bearer ${sessionData.accessToken}`,
-            },
-          })
+          fetch(
+            `https://www.googleapis.com/calendarView/v3/calendarViews/primary/events/${event.id}`,
+            {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${sessionData.accessToken}`,
+              },
+            }
+          )
         );
 
         await Promise.all(deletePromises);
 
         return {
           status: 'success',
-          message: 'Google Calendar cleared for the day',
+          message: 'Google CalendarView cleared for the day',
         };
       } catch (error) {
-        console.error('Error clearing calendar:', error);
+        console.error('Error clearing calendarView:', error);
         return {
           status: 'error',
-          message: error instanceof Error ? error.message : 'Failed to clear calendar',
+          message: error instanceof Error ? error.message : 'Failed to clear calendarView',
         };
       }
     }
 
-    if (action === 'exportToCalendar') {
+    if (action === 'exportToCalendarView') {
       const tasks = JSON.parse(formData.get('tasks') as string) as Task[];
 
       // Get the current user's session using Lucia
@@ -444,7 +413,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (!sessionData?.accessToken) {
         return {
           status: 'error',
-          message: 'No Google access token found. Please connect your Google Calendar.',
+          message: 'No Google access token found. Please connect your Google CalendarView.',
         };
       }
 
@@ -452,12 +421,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
       if (sessionData.tokenExpiry && new Date(sessionData.tokenExpiry) < new Date()) {
         return {
           status: 'error',
-          message: 'Token expired. Please re-authenticate with Google Calendar.',
+          message: 'Token expired. Please re-authenticate with Google CalendarView.',
         };
       }
 
       try {
-        // Create calendar events
+        // Create calendarView events
         const today = new Date().toISOString().split('T')[0];
         const events = tasks.map((task: any) => ({
           summary: task.title,
@@ -474,10 +443,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
           },
         }));
 
-        // Use Google Calendar API to create events
+        // Use Google CalendarView API to create events
         const results = await Promise.all(
-          events.map((event: GoogleCalendarEvent) =>
-            fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          events.map((event: GoogleCalendarViewEvent) =>
+            fetch('https://www.googleapis.com/calendarView/v3/calendarViews/primary/events', {
               method: 'POST',
               headers: {
                 Authorization: `Bearer ${sessionData.accessToken}`,
@@ -493,8 +462,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
         if (failedRequests.length > 0) {
           const errors = await Promise.all(
             failedRequests.map(async r => {
-              const error = (await r.json()) as GoogleCalendarError;
-              return error.error?.message || 'Failed to create calendar event';
+              const error = (await r.json()) as GoogleCalendarViewError;
+              return error.error?.message || 'Failed to create calendarView event';
             })
           );
           throw new Error(`Failed to create some events: ${errors.join(', ')}`);
@@ -502,10 +471,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
         return {
           status: 'success',
-          message: 'Events exported to Google Calendar',
+          message: 'Events exported to Google CalendarView',
         };
       } catch (error) {
-        console.error('Error exporting to calendar:', error);
+        console.error('Error exporting to calendarView:', error);
         return {
           status: 'error',
           message: error instanceof Error ? error.message : 'Failed to export events',

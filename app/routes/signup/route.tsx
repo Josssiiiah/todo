@@ -14,17 +14,17 @@ export default function SignUpRoute() {
       <div className="bg-white p-6 mt-48 rounded-lg shadow-lg">
         <h1 className="text-2xl font-bold mb-4">Sign up</h1>
         <Form method="POST" className="space-y-4">
-        <div>
+          <div>
             <label htmlFor="name" className="block font-medium text-gray-700">
-            Name
+              Name
             </label>
             <input
-            name="name"
-            id="name"
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+              name="name"
+              id="name"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
             />
-        </div>
-        <div>
+          </div>
+          <div>
             <label htmlFor="username" className="block font-medium text-gray-700">
               Username
             </label>
@@ -72,15 +72,15 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
   const formData = await request.formData();
 
-    const name = formData.get('name');
-    if (typeof name !== 'string' || name.length < 1) {
+  const name = formData.get('name');
+  if (typeof name !== 'string' || name.length < 1) {
     return json({
-        error: 'Name is required',
+      error: 'Name is required',
     });
-    }
+  }
 
-    const username = formData.get('username');
-    // username must be between 4 ~ 31 characters, and only consists of lowercase letters, 0-9, -, and _
+  const username = formData.get('username');
+  // username must be between 4 ~ 31 characters, and only consists of lowercase letters, 0-9, -, and _
   // keep in mind some database (e.g. mysql) are case insensitive
   if (
     typeof username !== 'string' ||
@@ -103,12 +103,12 @@ export async function action({ context, request }: ActionFunctionArgs) {
   if (username && password && typeof username === 'string' && typeof password === 'string') {
     await db
       .insert(Users)
-    .values({
+      .values({
         id: userId,
         name: name as string,
         username: username as string,
         password: password as string,
-    })
+      })
       .execute();
   }
 
