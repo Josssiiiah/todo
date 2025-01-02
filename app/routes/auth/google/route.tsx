@@ -1,6 +1,5 @@
 import { LoaderFunction, redirect } from '@remix-run/cloudflare';
 import { createCookie } from '@remix-run/cloudflare';
-// import { google } from "auth"; // Ensure you have Google OAuth setup in auth
 import { generateCodeVerifier, generateState, Google } from 'arctic';
 
 // Define the cookies
@@ -37,8 +36,6 @@ export const loader: LoaderFunction = async ({ request, context }) => {
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/calendar.events',
   ]);
-
-  console.log('Google OAuth URL:', url);
 
   // Set the state and code_verifier in cookies
   const stateCookie = await googleOAuthStateCookie.serialize(state);

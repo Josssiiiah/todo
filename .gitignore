@@ -3,9 +3,8 @@ node_modules
 /.cache
 /build
 .env
-
-.wrangler
-worker-configuration.d.ts
-wrangler.toml
+.env.local
+.dev.vars
+*.local
 
 .prettierrc
