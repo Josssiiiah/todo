@@ -133,11 +133,7 @@ export default function Index() {
       <header className="space-y-4">
         <h1 className="text-8xl font-bold tracking-tight">Todo AI</h1>
         <p className="text-2xl text-muted-foreground">
-          You have{' '}
-          <span className="font-bold text-blue-400">
-            {hoursUntilMidnight}
-          </span>{' '}
-          hours and{' '}
+          You have <span className="font-bold text-blue-400">{hoursUntilMidnight}</span> hours and{' '}
           <span className="font-bold text-blue-400">
             {minutesUntilMidnight.toString().padStart(2, '0')}
           </span>{' '}
@@ -155,7 +151,7 @@ export default function Index() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">List View</h2>
         <div className="flex flex-col gap-3">
-          {todos.map((task) => (
+          {todos.map(task => (
             <div
               key={task.id}
               className="flex items-center justify-between p-4 bg-secondary rounded-lg shadow-sm hover:shadow transition-shadow"
@@ -166,9 +162,7 @@ export default function Index() {
                   {militaryToNormalTime(task.startTime)} -{' '}
                   {militaryToNormalTime(getEndTime(task.startTime, task.duration))}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {task.duration} min
-                </span>
+                <span className="text-xs text-muted-foreground">{task.duration} min</span>
               </div>
               <Form method="post">
                 <input type="hidden" name="action" value="delete" />
@@ -200,10 +194,23 @@ export default function Index() {
           </div>
         </Form>
       </section>
-      
+
       <Toaster />
     </div>
   );
+}
+
+export interface Env {
+  DB: D1Database;
+  OPENAI_API_KEY: string;
+  OPENAI_ORGANIZATION: string;
+}
+
+export async function openAILoader(env: Env) {
+  return {
+    OPENAI_API_KEY: env.OPENAI_API_KEY,
+    OPENAI_ORGANIZATION: env.OPENAI_ORGANIZATION,
+  };
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -212,10 +219,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
   const action = formData.get('action');
 
   const { env }: any = context.cloudflare;
+  const { OPENAI_API_KEY, OPENAI_ORGANIZATION } = await openAILoader(env);
 
   const oai = new OpenAI({
-    apiKey: env.OPENAI_API_KEY ?? undefined,
-    organization: env.OPENAI_ORGANIZATION ?? undefined,
+    apiKey: OPENAI_API_KEY ?? undefined,
+    organization: OPENAI_ORGANIZATION ?? undefined,
   });
 
   const client = Instructor({
