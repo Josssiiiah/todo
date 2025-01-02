@@ -20,6 +20,8 @@ migrations_dir="./app/drizzle/migrations"
 # GOOGLE_REDIRECT_URI="http://localhost:5173/googleredirect"
 GOOGLE_REDIRECT_URI="https://todo-2lq.pages.dev/googleredirect"
 
+
+
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "artworks"
